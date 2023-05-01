@@ -6,7 +6,8 @@
 //
 
 import SwiftUI
-import CodeScanner
+import CarBode
+import AVFoundation
 
 
 struct CheckOutScanner: View {
@@ -14,27 +15,39 @@ struct CheckOutScanner: View {
     @State private var scannedCode: String = ""
     @State private var id: String = ""
     
-    @MainActor
-    func executeQuery() async{
-        scannedCode="lmao"
+    var scanner : some View{
+        CBScanner(
+            supportBarcode: .constant([.qr, .code39, .code128]),
+            scanInterval: .constant(1.0)
+        ){
+            let characterset = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+            if $0.value.rangeOfCharacter(from: characterset.inverted) != nil {
+                if($0.value.contains("https://ctsv.hust.edu.vn/#/card/")){
+                    var temp = $0.value
+                    temp.replace("https://ctsv.hust.edu.vn/#/card/", with: "")
+                    temp = String(temp.prefix(8))
+                    self.id=temp
+                    self.isShowingScanner=false
+                    doSmth()
+                    return
+                }
+                return
+            }
+            
+            self.id = $0.value
+            self.isShowingScanner=false
+            doSmth()
+        }
     }
     
-    var scannerSheet : some View{
-        CodeScannerView(
-            codeTypes: [.qr],
-            completion:{ result in
-                if case let .success(code) = result {
-                    self.id = code.string
-                    self.isShowingScanner=false
-                    Task{
-                        if(QRResolver.getMethod(path: "http://vps-ab8c14d4.vps.ovh.ca:8080/api?id="+code.string+"&isCheckIn=false")){
-                            scannedCode = "Check Out Complete"
-                        }else{
-                            scannedCode = "Check Out Got Error"
-                        }
-                    }
+    func doSmth(){
+        Task{
+            if(QRResolver.getMethod(path: "http://vps-ab8c14d4.vps.ovh.ca:8080/api?id="+id+"&isCheckIn=false")){
+                scannedCode = "Check Out Complete"
+            }else{
+                scannedCode = "Check Out Invalid"
             }
-        })
+        }
     }
     
     var body: some View {
@@ -50,7 +63,7 @@ struct CheckOutScanner: View {
                     Text("Scan").onTapGesture {
                         isShowingScanner=true
                     }.sheet(isPresented: $isShowingScanner){
-                        self.scannerSheet
+                        self.scanner
                     }
                 }
                 .padding(.horizontal,20)
@@ -62,11 +75,5 @@ struct CheckOutScanner: View {
         }.padding()
             .navigationTitle("Check Out")
             .navigationBarTitleDisplayMode(.inline)
-    }
-    
-    
-    func handleScan(result: Result<ScanResult, ScanError>) {
-        isShowingScanner = false
-       // more code to come
     }
 }

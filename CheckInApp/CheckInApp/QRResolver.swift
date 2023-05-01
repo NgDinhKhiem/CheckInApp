@@ -17,7 +17,7 @@ struct QRResolver{
         do {
             let myHTMLString = try String(contentsOf: myURL, encoding: .ascii)
             print(myHTMLString)
-            if(myHTMLString=="true"||myHTMLString=="false"){return true}
+            if(myHTMLString=="true"){return true}
             else{ return false }
         } catch let error {
             print("Error: \(error)")

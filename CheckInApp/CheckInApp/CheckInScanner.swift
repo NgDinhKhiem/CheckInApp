@@ -6,35 +6,51 @@
 //
 
 import SwiftUI
-import CodeScanner
-
+import CarBode
+import AVFoundation
 
 struct CheckInScanner: View {
+    @State private var isLoading = false
     @State private var isShowingScanner = false
     @State private var scannedCode: String = ""
     @State private var id: String = ""
     
-    @MainActor
-    func executeQuery() async{
-        scannedCode="lmao"
+    var scanner : some View{
+        CBScanner(
+            supportBarcode: .constant([.qr, .code39, .code128]),
+            scanInterval: .constant(1.0)
+        ){
+            let characterset = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+            if $0.value.rangeOfCharacter(from: characterset.inverted) != nil {
+                if($0.value.contains("https://ctsv.hust.edu.vn/#/card/")){
+                    var temp = $0.value
+                    temp.replace("https://ctsv.hust.edu.vn/#/card/", with: "")
+                    temp = String(temp.prefix(8))
+                    self.id=temp
+                    self.isShowingScanner=false
+                    self.isLoading=true
+                    doSmth()
+                    return
+                }
+                return
+            }
+            
+            self.id = $0.value
+            self.isShowingScanner=false
+            self.isLoading=true
+            doSmth()
+        }
     }
     
-    var scannerSheet : some View{
-        CodeScannerView(
-            codeTypes: [.qr],
-            completion:{ result in
-                if case let .success(code) = result {
-                    self.id = code.string
-                    self.isShowingScanner=false
-                    Task{
-                        if(QRResolver.getMethod(path: "http://vps-ab8c14d4.vps.ovh.ca:8080/api?id="+code.string+"&isCheckIn=true")){
-                            scannedCode = "Check In Complete"
-                        }else{
-                            scannedCode = "Check In Got Error"
-                        }
-                    }
+    func doSmth(){
+        Task{
+            if(QRResolver.getMethod(path: "http://vps-ab8c14d4.vps.ovh.ca:8080/api?id="+id+"&isCheckIn=true")){
+                scannedCode = "Check In Complete"
+            }else{
+                scannedCode = "Check In Invalid"
             }
-        })
+        }
+        self.isLoading=false
     }
     
     var body: some View {
@@ -44,13 +60,33 @@ struct CheckInScanner: View {
             
             Text(scannedCode)
                 .padding()
+            if(isLoading){
+                HStack {
+                    Circle()
+                        .fill(Color.blue)
+                        .frame(width: 10, height: 10)
+                        .scaleEffect(isLoading ? 1.0 : 0.5)
+                        .animation(Animation.easeInOut(duration: 0.5).repeatForever())
+                    Circle()
+                        .fill(Color.blue)
+                        .frame(width: 10, height: 10)
+                        .scaleEffect(isLoading ? 1.0 : 0.5)
+                        .animation(Animation.easeInOut(duration: 0.5).repeatForever().delay(0.3))
+                    Circle()
+                        .fill(Color.blue)
+                        .frame(width: 10, height: 10)
+                        .scaleEffect(isLoading ? 1.0 : 0.5)
+                        .animation(Animation.easeInOut(duration: 0.5).repeatForever().delay(0.6))
+                }
+                .padding()
+            }
             ZStack{
                 HStack{
                     Image(systemName: "qrcode.viewfinder")
                     Text("Scan").onTapGesture {
                         isShowingScanner=true
                     }.sheet(isPresented: $isShowingScanner){
-                        self.scannerSheet
+                        self.scanner
                     }
                 }
                 .padding(.horizontal,20)
@@ -62,17 +98,5 @@ struct CheckInScanner: View {
         }.padding()
             .navigationTitle("Check In")
             .navigationBarTitleDisplayMode(.inline)
-    }
-    
-    
-    func handleScan(result: Result<ScanResult, ScanError>) {
-        isShowingScanner = false
-       // more code to come
-    }
-}
-
-struct CheckInScanner_Previw: PreviewProvider {
-    static var previews: some View {
-        CheckInScanner()
     }
 }
