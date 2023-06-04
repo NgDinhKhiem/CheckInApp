@@ -44,7 +44,7 @@ struct CheckInScanner: View {
     
     func doSmth(){
         Task{
-            if(QRResolver.getMethod(path: "http://vps-ab8c14d4.vps.ovh.ca:8080/api?id="+id+"&isCheckIn=true")){
+            if(QRResolver.getMethod(path: "hiden")){
                 scannedCode = "Check In Complete"
             }else{
                 scannedCode = "Check In Invalid"
